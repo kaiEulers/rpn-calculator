@@ -1,0 +1,2001 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"PB",
+				"PB_activated"
+			],
+			[
+				"arg2",
+				"arg2_typ"
+			],
+			[
+				"arg1",
+				"arg1_typ"
+			],
+			[
+				"Signed",
+				"signedResult"
+			],
+			[
+				"output",
+				"output"
+			],
+			[
+				"in",
+				"in"
+			],
+			[
+				"end",
+				"endcase"
+			],
+			[
+				"reg",
+				"register"
+			],
+			[
+				"IP",
+				"IP"
+			],
+			[
+				"delay",
+				"delay_500ms"
+			],
+			[
+				"out",
+				"out"
+			],
+			[
+				"DASH",
+				"DASH1"
+			],
+			[
+				"mc",
+				"mc"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "AuxMod.v",
+			"settings":
+			{
+				"buffer_size": 6409,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"contents": "//----------------------------------------\n//CPU Module\n//----------------------------------------\n`include \"CPU.vh\"\n\nmodule CPU(\n\tinput \twire \t\t[7:0]dIn,\n\tinput\twire\t\tsample,\n\tinput \twire\t\t[2:0]PBs,\n\tinput\twire\t\tclock,\n\tinput \twire \t\treset,\n\tinput\twire\t\tturbo,\n\n\toutput \twire \t\t[7:0]dOut,\n\toutput \twire\t\tenableDisp,\n\toutput \twire \t\t[5:0]gOut,\n\toutput \twire\t\t[3:0]debug,\n\toutput\treg\t\t\t[7:0]IP = 8'd0\n\t);\n\n\t//----------------------------------------\n\t//Counter\n\t//----------------------------------------\n\t//- slow's clock down to 250ms/cycle\n\t//----------------------------------------\n\t//countMax for ModelSim tests\n\tlocalparam countMax = 24'd0;\n\t// localparam countMax = 24'd12_500_000;\n\n\treg [23:0]count = 1;\n\n\talways @(posedge clock)\n\t\tif (count >= countMax)\n\t\t\tcount <= 0;\n\t\telse\n\t\t\tcount <= count + 1'd1;\n\n\n\t//----------------------------------------\n\t//CPU Registers\n\t//----------------------------------------\n\t//- an array of 32 8bit registers \n\t//----------------------------------------\n\treg [7:0]register[0:31];\n\n\t//These wires are used to read the last four special registers register[28:31]\n\twire [7:0]gOutReg \t= register[29];\n\twire [7:0]dOutReg \t= register[30];\n\twire [7:0]flagReg \t= register[31];\n\n\t`define RFLAG register[31]\n\t`define RDINP register[28]\n\n\t//Contents of register[30] is assigned to dOut to be displayed on the 7-segment display\n\tassign dOut = dOutReg;\n\t//Contents of the first 5 bits of register[29] is assigned to gOut to be displayed on the LEDRs\n\tassign gOut = gOutReg[5:0];\n\n\n\t//----------------------------------------\n\t//Program Memory\n\t//----------------------------------------\n\twire [34:0]instruct;\n\n\t//ROM will return an instruction microcode given the address of the instruction (IP)\n\tasyncROM ROM(\n\t\t.address(IP),\n\t\t.instruct(instruct)\n\t\t);\n\n\n\t//----------------------------------------\n\t//Inputs\n\t//----------------------------------------\n\twire [7:0]dIn_safe;\n\tsynchroniser SYNC0(\n\t\t.clock(clock),\n\t\t.in(dIn[0]),\n\n\t\t.out(dIn_safe[0])\n\t\t);\n\tsynchroniser SYNC1(\n\t\t.clock(clock),\n\t\t.in(dIn[1]),\n\n\t\t.out(dIn_safe[1])\n\t\t);\n\tsynchroniser SYNC2(\n\t\t.clock(clock),\n\t\t.in(dIn[2]),\n\n\t\t.out(dIn_safe[2])\n\t\t);\n\tsynchroniser SYNC3(\n\t\t.clock(clock),\n\t\t.in(dIn[3]),\n\n\t\t.out(dIn_safe[3])\n\t\t);\n\tsynchroniser SYNC4(\n\t\t.clock(clock),\n\t\t.in(dIn[4]),\n\n\t\t.out(dIn_safe[4])\n\t\t);\n\tsynchroniser SYNC5(\n\t\t.clock(clock),\n\t\t.in(dIn[5]),\n\n\t\t.out(dIn_safe[5])\n\t\t);\n\tsynchroniser SYNC6(\n\t\t.clock(clock),\n\t\t.in(dIn[6]),\n\n\t\t.out(dIn_safe[6])\n\t\t);\n\tsynchroniser SYNC7(\n\t\t.clock(clock),\n\t\t.in(dIn[7]),\n\n\t\t.out(dIn_safe[7])\n\t\t);\n\n\twire [3:0]PB_safe;\n\tsynchroniser SYNC8(\n\t\t.clock(clock),\n\t\t.in(PBs[0]),\n\n\t\t.out(PB_safe[0])\n\t\t);\n\tsynchroniser SYNC9(\n\t\t.clock(clock),\n\t\t.in(PBs[1]),\n\n\t\t.out(PB_safe[1])\n\t\t);\n\tsynchroniser SYNC10(\n\t\t.clock(clock),\n\t\t.in(PBs[2]),\n\n\t\t.out(PB_safe[2])\n\t\t);\n\tsynchroniser SYNC11(\n\t\t.clock(clock),\n\t\t.in(sample),\n\n\t\t.out(PB_safe[3])\n\t\t);\n\n\t//The generate-statement is a shorthand way of instantiating modules. In the below statement, it will generate 4 instances of the detectFallEdge module. The generate-variable is also used to declare the inputs adn outputs of this instantiated modules.\n\twire [3:0]PB_activated;\n\tgenvar i;\n\tgenerate\n\t\tfor (i = 0; i <= 3; i = i + 1)\n\t\tbegin: detectFall\n\t\t\tdetectFallEdge DFE(\n\t\t\t\t.clock(clock),\n\t\t\t\t.in(PB_safe[i]),\n\n\t\t\t\t.out(PB_activated[i])\n\t\t\t\t);\n\t\tend\n\tendgenerate\n\n\n\t//----------------------------------------\n\t//Turbo Switch\n\t//----------------------------------------\n\twire turbo_safe;\n\t//Turbo switch needs to be synchronised to prevent glitching and mestablity\n\tsynchroniser SYNC_turbo(\n\t\t.clock(clock),\n\t\t.in(turbo),\n\n\t\t.out(turbo_safe)\n\t\t);\n\n\n\t//----------------------------------------\n\t//Instruction Cycle\n\t//----------------------------------------\n\t//Wire \"go\" will be HIGH when counter finishes one cycle of counting\n\twire go = ~reset && (count == 0 || turbo_safe);\n\t\n\t//The instruction returned by the ROM is split into its various parts\n\twire [3:0]cmd_grp\t= instruct[34:31];\n\twire [2:0]cmd\t\t= instruct[30:28];\n\twire [1:0]arg1_typ\t= instruct[27:26];\n\twire [7:0]arg1\t\t= instruct[25:18];\n\twire [1:0]arg2_typ\t= instruct[17:16];\n\twire [7:0]arg2\t\t= instruct[15:8];\n\twire [7:0]addr\t\t= instruct[7:0];\n\n\talways @(posedge clock)\n\t\tif (reset)\n\t\tbegin\n\t\t\t//Reset button clears IP and the flagRegister\n\t\t\tIP \t\t<= 8'b0;\n\t\t\t`RFLAG \t<= 8'b0;\n\t\tend\n\t\telse if (PB_activated)\n\t\tbegin: pushButtons\n\t\t\t//CPU is constantly detecting inputs from the four pushButtons \n\t\t\tinteger j;\n\t\t\tfor (j = 0; j <= 3; j = j + 1)\n\t\t\t\t//If any of the pushButtons are activated, the corresponding flag in the flagRegister will also be activated. This will also be reflected on the LEDR[2:0].\n\t\t\t\tif (PB_activated[j])\n\t\t\t\t\t`RFLAG[j] <= 1;\n\n\t\t\t//If pushButton 4 is activated, the value of dIn will be store in the dInRegister.\n\t\t\tif (PB_activated[3])\n\t\t\t\t`RDINP <= dIn_safe;\n\t\tend\n\t\telse if (go)\n\t\tbegin\n\t\t\t//Instruction Pointer (IP) stores the address of a particular instruction. It will increment when \"go\" is HIGH or reset to 0 when reset is HIGH.\n\t\t\tIP <= IP + 8'd1;\n\n\t\t\t//Executions are made depending on the microcode\n\t\t\tcase (cmd_grp)\n\n\t\t\t\t//------------------------------\n\t\t\t\t//MOVE Command Group\n\t\t\t\t//------------------------------\n\t\t\t\t`MOV:\n\t\t\t\tbegin: move\n\t\t\t\t\treg [7:0]tempNum;\n\n\t\t\t\t\t//arg1 is a register address. tempNum will get the value that is store in register[arg1].\n\t\t\t\t\ttempNum = getNumber(arg1_typ, arg1);\n\n\t\t\t\t\tcase (cmd)\n\t\t\t\t\t\t`SHL:\n\t\t\t\t\t\tbegin\n\t\t\t\t\t\t\t//MSB of tempNum will be store in bit5 of the flag register\n\t\t\t\t\t\t\t`RFLAG[`SHFT] <= tempNum[7];\n\t\t\t\t\t\t\t//tempNum is bit shifted to the left\n\t\t\t\t\t\t\ttempNum = {tempNum[6:0], 1'b0};\n\t\t\t\t\t\tend\n\t\t\t\t\t\t`SHR:\n\t\t\t\t\t\tbegin\n\t\t\t\t\t\t\t//LSB of tempNum will be store in bit5 of th flag register\n\t\t\t\t\t\t\t`RFLAG[`SHFT] <= tempNum[0];\n\t\t\t\t\t\t\t//tempNum is bit shifted to the right\n\t\t\t\t\t\t\ttempNum = {1'b0, tempNum[7:1]};\n\t\t\t\t\t\tend\n\t\t\t\t\tendcase\n\n\t\t\t\t\t//tempNum is stored in the register address register[arg2]\n\t\t\t\t\tregister[getLocation(arg2_typ, arg2)] <= tempNum;\n\t\t\t\tend\n\n\t\t\t\t//------------------------------\n\t\t\t\t//OPERATION Command Group\n\t\t\t\t//------------------------------\t\t\t\t\n\t\t\t\t`OPR:\n\t\t\t\tbegin: operation\n\t\t\t\t\treg [7:0]tempNum;\n\t\t\t\t\treg [7:0]tempLoc;\n\t\t\t\t\treg [8:0]result;\n\t\t\t\t\treg signed [8:0]signedResult;\n\n\t\t\t\t\t//arg2 is a register address. Get the value of arg2\n\t\t\t\t\ttempNum = getNumber(arg2_typ, arg2);\t\t\n\t\t\t\t\t//arg1 is a register address. Get register address of arg1\n\t\t\t\t\ttempLoc = getLocation(arg1_typ, arg1);\n\n\t\t\t\t\t//All signed values have to be read by verilog with $signed() before any mathemathetical operation is implemented\n\t\t\t\t\tcase (cmd)\n\t\t\t\t\t\t//Unsigned Addition\n\t\t\t\t\t\t`UAD:\tresult = register[tempLoc] + tempNum;\n\t\t\t\t\t\t//Signed Addition\n\t\t\t\t\t\t`SAD:\tsignedResult = $signed(register[tempLoc]) + $signed(tempNum);\n\t\t\t\t\t\t//Unsigned Multiplication\n\t\t\t\t\t\t`UMT:\tresult = register[tempLoc] * tempNum;\n\t\t\t\t\t\t//Signed Multiplication\n\t\t\t\t\t\t`SMT:\tsignedResult = $signed(register[tempLoc]) * $signed(tempNum);\n\t\t\t\t\t\t//Bitwise AND\t\n\t\t\t\t\t\t`AND:\tresult = register[tempLoc] & tempNum;\n\t\t\t\t\t\t//Bitwise OR\n\t\t\t\t\t\t`OR:\tresult = register[tempLoc] | tempNum;\n\t\t\t\t\t\t//Bitwise XOR\n\t\t\t\t\t\t`XOR:\tresult = register[tempLoc] ^ tempNum;\n\t\t\t\t\tendcase\n\n\t\t\t\t\t//Bit2 of all multiplication and addition commands is 0. If commands are multiplications or additions...\n\t\t\t\t\tif (cmd[2] == 0)\n\t\t\t\t\t\t//Bit0 of unsigned multiplication and addition is 0\n\t\t\t\t\t\tif (cmd[0] == 0)\n\t\t\t\t\t\tbegin\n\t\t\t\t\t\t \t//If commands are unsigned multiplication or addition and the result uses more than 8 bits, flag overflow bit in the flag register.\n\t\t\t\t\t\t\t`RFLAG[`OFLW] <= (result > 255);\n\t\t\t\t\t\tend\n\t\t\t\t\t\t//Bit0 of signed multiplication adn addition is 1. If commands are signed multiplication or addition...\n\t\t\t\t\t\telse\n\t\t\t\t\t\tbegin\n\t\t\t\t\t\t\t//If commands are signed multiplication or addition and the result uses more than 8 bits, flag overflow bit in the flag register.\n\t\t\t\t\t\t\t`RFLAG[`OFLW] <= (signedResult > 127 || signedResult < -128);\n\n\t\t\t\t\t\t\tresult = signedResult[7:0];\n\t\t\t\t\t\tend\n\n\t\t\t\t\t//Store result at the register location defined by arg1\n\t\t\t\t\tregister[tempLoc] <= result[7:0];\n\t\t\t\tend\n\n\t\t\t\t//------------------------------\n\t\t\t\t//JUMP Command Group\n\t\t\t\t//------------------------------\n\t\t\t\t//If `JMP is the cmd_grp, assign arg1 to IP.\n\t\t\t\t`JMP:\n\t\t\t\tbegin: jump\n\t\t\t\t\treg cond;\n\t\t\t\t\treg [7:0]tempNum1;\n\t\t\t\t\treg [7:0]tempNum2;\n\n\t\t\t\t\ttempNum1 = getNumber(arg1_typ, arg1);\n\t\t\t\t\ttempNum2 = getNumber(arg2_typ, arg2);\n\n\t\t\t\t\tcase (cmd)\n\t\t\t\t\t\t//Unconditional jump\n\t\t\t\t\t\t`UNC:\t\tcond = 1;\n\t\t\t\t\t\t//Jump on equality\n\t\t\t\t\t\t`EQ:\t\tcond = (tempNum1 == tempNum2);\n\t\t\t\t\t\t//Jump on unsigned less than\n\t\t\t\t\t\t`ULT:\t\tcond = (tempNum1 < tempNum2);\n\t\t\t\t\t\t//Jump on signed less than\n\t\t\t\t\t\t`SLT:\t\tcond = ($signed(tempNum1) < $signed(tempNum2));\n\t\t\t\t\t\t//Jump on unsigned less than or equal\n\t\t\t\t\t\t`ULE:\t\tcond = (tempNum1 <= tempNum2);\n\t\t\t\t\t\t//Jump on signed less than or equal\n\t\t\t\t\t\t`SLE:\t\tcond = ($signed(tempNum1) <= $signed(tempNum2));\n\t\t\t\t\t\tdefault: \tcond = 0;\n\t\t\t\t\tendcase\n\n\t\t\t\t\tif (cond)\n\t\t\t\t\t\tIP <= addr;\n\t\t\t\tend\n\t\t\t\t\t\n\t\t\t\t//------------------------------\n            \t//ATOMIC CLEAR & TEST Command Group\n           \t\t//------------------------------\n           \t\t`ATC:\n           \t\tbegin: atomicCT\n           \t\t\t//If the flagRegister bit specified by cmd is active, jump IP to the address specified by addr\n           \t\t\tif (`RFLAG[cmd])\n           \t\t\t\tIP <= addr;\n\n           \t\t\t//Clear the flagRegister bit specified by cmd\n           \t\t\t`RFLAG[cmd] <= 0;\n           \t\tend\n\n\t\t\tendcase\n\t\tend\n\n\n\t//----------------------------------------\n\t//LEDR Outputs for Special Bits\n\t//----------------------------------------\n\tassign enableDisp \t= gOutReg[`DVAL];\n\tassign debug[3] \t= flagReg[`SHFT];\n\tassign debug[2] \t= flagReg[`OFLW];\n\tassign debug[1] \t= flagReg[`SMPL];\n\tassign debug[0] \t= go;\n\n\n\t//----------------------------------------\n\t//Functions\n\t//----------------------------------------\n\tfunction [7:0]getNumber;\n\t\tinput [1:0]arg_type;\n\t\tinput [7:0]arg;\n\t\t\n\t\tbegin\n\t\t\tcase (arg_type)\n\t\t\t\t`REG: getNumber = register[arg[5:0]];\n\t\t\t\t`IND: getNumber = register[register[arg[5:0]][5:0]];\n\t\t\t\tdefault: getNumber = arg;\n\t\t\tendcase\n\t\tend\n\tendfunction\n\n\tfunction [7:0]getLocation;\n\t\tinput [1:0]arg_type;\n\t\tinput [7:0]arg;\n\t\t\t\n\t\tbegin\n\t\t\tcase (arg_type)\n\t\t\t\t`REG: getLocation = arg[5:0];\n\t\t\t\t`IND: getLocation = register[arg[5:0]][5:0];\n\t\t\t\tdefault: getLocation = 0;\n\t\t\tendcase\n\t\tend\n\tendfunction\nendmodule",
+			"file": "CPU.v",
+			"file_size": 10348,
+			"file_write_time": 131402455480000000,
+			"settings":
+			{
+				"buffer_size": 10350,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "ROM.v",
+			"settings":
+			{
+				"buffer_size": 17130,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"contents": "//----------------------------------------\n//Top Level Design\n//----------------------------------------\nmodule MyComputer(\n\tinput \twire \tCLOCK_50,\n\tinput\twire\t[3:0]KEY,\n\tinput\twire\t[9:0]SW,\n\n\toutput \twire \t[9:0]LEDR,\n\toutput \twire \t[6:0]HEX0,\n\toutput \twire \t[6:0]HEX1,\n\toutput \twire \t[6:0]HEX2,\n\toutput \twire \t[6:0]HEX3,\n\toutput \twire \t[6:0]HEX4,\n\toutput \twire \t[6:0]HEX5\n\t);\n\t\n\twire reset;\n\twire [7:0]dOut;\n\twire enableDisp;\n\twire [7:0]IP;\n\t\n\n\t//----------------------------------------\n\t//De-bouncing Reset Input\n\t//----------------------------------------\n\tdebouncer DB0(\n\t\t.clock(CLOCK_50),\n\t\t.in(SW[9]),\n\n\t\t.out(reset)\n\t\t);\n\n\n\t//----------------------------------------\n\t//Central Processing Unit\n\t//----------------------------------------\n\tCPU C0(\n\t// CPU_test C0(\n\t\t.dIn(SW[7:0]),\n\t\t.sample(~KEY[3]),\n\t\t.PBs(~KEY[2:0]),\n\t\t.clock(CLOCK_50),\n\t\t.reset(reset),\n\t\t.turbo(SW[8]),\n\n\t\t.dOut(dOut),\n\t\t.enableDisp(enableDisp),\n\t\t.gOut(LEDR[5:0]),\n\t\t.debug(LEDR[9:6]),\n\t\t.IP(IP)\n\t\t);\n\n\n\t//----------------------------------------\n\t//Display Outputs\n\t//----------------------------------------\n\tdisp2cNum DD0(\n\t\t.x(dOut),\n\t\t.enable(enableDisp),\n\n\t\t.disp0(HEX0),\n\t\t.disp1(HEX1),\n\t\t.disp2(HEX2),\n\t\t.disp3(HEX3)\n\t\t);\n\n\tdispHex DH0(\n\t\t.x(IP),\n\t\t.enable(enableDisp),\t\n\n\t\t.disp0(HEX4),\n\t\t.disp1(HEX5)\n\t\t);\n\nendmodule",
+			"file": "MyComputer.v",
+			"file_size": 1306,
+			"file_write_time": 131398431560000000,
+			"settings":
+			{
+				"buffer_size": 1307,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "CPU.vh",
+			"settings":
+			{
+				"buffer_size": 829,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "CPU_boardTest.v",
+			"settings":
+			{
+				"buffer_size": 1384,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "testBenches.v",
+			"settings":
+			{
+				"buffer_size": 4604,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "/Users/kaisoon/Google Drive/Simulators/ModelSim/dsdProject.do",
+			"settings":
+			{
+				"buffer_size": 92,
+				"encoding": "UTF-8",
+				"line_ending": "Unix",
+				"name": "vlog -work work {F:/Code/Verilog/DSD Project/testB"
+			}
+		},
+		{
+			"contents": "vlog -reportprogress 300 -work dsdProject {F:/Code/Verilog/DSD Project - RPN Calculator/*.v}\n\nvsim dsdProject.debouncer_test\n\nadd wave -radix binary {sim:debouncer_test/clock}\nadd wave -radix binary {sim:debouncer_test/in}\nadd wave -radix binary {sim:debouncer_test/D0/in_synced}\nadd wave -radix binary {sim:debouncer_test/D0/previous}\nadd wave -radix binary {sim:debouncer_test/D0/out}\n\nrun -all\n\nwave zoom full",
+			"file": "/Users/kaisoon/Google Drive/Simulators/ModelSim/debouncer_test.do",
+			"file_size": 423,
+			"file_write_time": 131401813780000000,
+			"settings":
+			{
+				"buffer_size": 412,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"contents": "vlog -reportprogress 300 -work dsdProject {F:/Code/Verilog/DSD Project - RPN Calculator/*.v}\n\nvsim dsdProject.dispHex_test\n\nadd wave -radix unsigned *\n\nrun -all\n\nwave zoom full",
+			"file": "/Users/kaisoon/Google Drive/Simulators/ModelSim/dispHex_test.do",
+			"file_size": 187,
+			"file_write_time": 131401813860000000,
+			"settings":
+			{
+				"buffer_size": 176,
+				"line_ending": "Unix",
+				"name": "vlog -reportprogress 300 -work dsdProject {F:/Code"
+			}
+		},
+		{
+			"contents": "vlog -reportprogress 300 -work dsdProject {F:/Code/Verilog/DSD Project - RPN Calculator/*.v}\n\nvsim dsdProject.disp2cNum_test\n\nadd wave -radix unsigned *\nadd wave -radix unsigned {sim:disp2cNum_test/M0/neg}\nadd wave -radix unsigned {sim:disp2cNum_test/M0/ux}\n\nrun -all\n\nwave zoom full",
+			"file": "/Users/kaisoon/Google Drive/Simulators/ModelSim/disp2cNum_test.do",
+			"file_size": 294,
+			"file_write_time": 131401813830000000,
+			"settings":
+			{
+				"buffer_size": 283,
+				"line_ending": "Unix",
+				"name": "vlog -reportprogress 300 -work dsdProject {F:/Code"
+			}
+		},
+		{
+			"contents": "vlog -reportprogress 300 -work dsdProject {F:/Code/Verilog/DSD Project - RPN Calculator/*.v}\n\nvsim dsdProject.CPU_test\n\n#add wave -radix unsigned *\nadd wave -radix unsigned    {sim:/CPU_test/dIn}\nadd wave -radix binary      {sim:/CPU_test/sample}\nadd wave -radix binary      {sim:/CPU_test/PBs}\nadd wave -radix binary      {sim:/CPU_test/reset}\nadd wave -radix binary      {sim:/CPU_test/turbo}\nadd wave -radix binary      {sim:/CPU_test/clock}\nadd wave -radix binary      {sim:/CPU_test/enableDisp}\nadd wave -radix unsigned    {sim:/CPU_test/IP}\nadd wave -radix binary      {sim:/CPU_test/debug}\nadd wave -radix binary      {sim:/CPU_test/gOut}\nadd wave -radix unsigned    {sim:/CPU_test/dOut}\nadd wave -radix signed      {sim:/CPU_test/dOut}\n\n#add wave -radix binary       {sim:/CPU_test/C0/flagReg}\nadd wave -radix binary      {sim:/CPU_test/C0/flagReg[5]}\nadd wave -radix binary      {sim:/CPU_test/C0/flagReg[4]}\nadd wave -radix binary      {sim:/CPU_test/C0/flagReg[3]}\nadd wave -radix binary      {sim:/CPU_test/C0/flagReg[2]}\nadd wave -radix binary      {sim:/CPU_test/C0/flagReg[1]}\nadd wave -radix binary      {sim:/CPU_test/C0/flagReg[0]}\n\n#add wave -radix unsigned {sim:/CPU_test/C0/cmd_grp}\n#add wave -radix unsigned {sim:/CPU_test/C0/cmd}\n#add wave -radix unsigned {sim:/CPU_test/C0/arg1_typ}\n#add wave -radix unsigned {sim:/CPU_test/C0/arg1}\n#add wave -radix unsigned {sim:/CPU_test/C0/arg2_typ}\n#add wave -radix unsigned {sim:/CPU_test/C0/arg2}\n\n#add wave -radix unsigned {sim:/CPU_test/C0/dIn_safe}\nadd wave -radix binary {sim:/CPU_test/C0/PB_safe}\nadd wave -radix binary {sim:/CPU_test/C0/PB_activated}\n\nrun -all\n\nwave zoom full",
+			"file": "/Users/kaisoon/Google Drive/Simulators/ModelSim/CPU_test.do",
+			"file_size": 1657,
+			"file_write_time": 131401814030000000,
+			"settings":
+			{
+				"buffer_size": 1646,
+				"line_ending": "Unix",
+				"name": "vlog -reportprogress 300 -work dsdProject {F:/Code"
+			}
+		},
+		{
+			"file": "/Users/kaisoon/Google Drive/Simulators/ModelSim/dfe_test.do",
+			"settings":
+			{
+				"buffer_size": 365,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 87.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"rename",
+				"File: Rename"
+			],
+			[
+				"renam",
+				"File: Rename"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"Install",
+				"Package Control: Install Package"
+			],
+			[
+				"In",
+				"Package Control: Install Package"
+			],
+			[
+				"inst",
+				"Package Control: Install Package"
+			],
+			[
+				"rein",
+				"Indentation: Reindent Lines"
+			]
+		],
+		"width": 629.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/Users/kaisoon/Google Drive/Code/MATLAB/ELEN30009 Electrical Network Analysis & Design/Assignment4.m",
+		"/Users/kaisoon/Google Drive/Code/Verilog/AlteraLab7/Part4_testBench.v",
+		"/Users/kaisoon/Google Drive/Simulators/ModelSim/cd.do",
+		"/Users/kaisoon/Google Drive/Code/Verilog/DSD Project/AuxMod.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/DSD Project/SSeg_test.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/DSD Project/disp2cNum_test.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/DSD Project/automation.do",
+		"/Users/kaisoon/Google Drive/Code/Verilog/DSD Project/testBench.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/DSD Project/module testBench;",
+		"/Users/kaisoon/Google Drive/Code/Verilog/Projects/AlteraLab7.sublime-project",
+		"/Users/kaisoon/Google Drive/Code/Verilog/AlteraLab7/counter_bit4.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/AlteraLab7/stateMach.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/AlteraLab7/delay_500ms.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/AlteraLab7/shiftReg_4bit.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/AlteraLab7/letterSel.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/AlteraLab7/Part4.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/Part4.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/morseCode.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/dFlipFlop_8bit.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/morseCode_shiftReg_4bit.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/morseCode_shiftReg_4bit",
+		"/Users/kaisoon/Google Drive/Quartus Prime/Digital System Design Workshops/Lab 06 - Finite State Machine/Part3/Part3.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/morseCode_lengthCounter.v",
+		"/Users/kaisoon/Google Drive/Simulators/ModelSim/letterSel.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/letterSel.v",
+		"/Users/kaisoon/Google Drive/Simulators/ModelSim/Kai/testBench.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/testBench",
+		"/Users/kaisoon/Google Drive/Code/Verilog/clock_1Hz.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/sevSegDecode_2Digits.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/clock24Hour.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/sevSegDecode_2Digits2.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/SevSegDecode_2Digits2.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/SevSegDecode_2Digits.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/7SegDecode_2Digits2.v",
+		"/Users/kaisoon/Google Drive/Code/Verilog/two7SegDecoder.v",
+		"/Users/kaisoon/Google Drive/Sublime Text/DSDPracQuestions",
+		"/Users/kaisoon/Google Drive/Sublime Text/clock_1Hz",
+		"/Users/kaisoon/Google Drive/Sublime Text/clock24Hour.v",
+		"/Users/kaisoon/Google Drive/Sublime Text/dFlipFlop.v",
+		"/Users/kaisoon/Google Drive/Sublime Text/two7SegDecoder.v",
+		"/Users/kaisoon/Google Drive/Sublime Text/sevSegDecoder.v",
+		"/Users/kaisoon/Google Drive/Sublime Text/flipFlop.v",
+		"/Users/kaisoon/Downloads/Verilog.sublime-package"
+	],
+	"find":
+	{
+		"height": 35.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"RFLAG",
+			"turnOn",
+			"enable",
+			"dOut",
+			"bit",
+			"ACC",
+			"acc",
+			"PB_activated",
+			"PB_safe",
+			"PBs",
+			"PB",
+			"0",
+			"'b1",
+			"go",
+			"LEDR",
+			"7",
+			"ACC",
+			"\"mov\"",
+			"mov",
+			"btn",
+			"detectFallingEdge",
+			"detectFallEdge",
+			"detectFall",
+			"btn",
+			"previn",
+			"Btn",
+			"btn",
+			"Btn",
+			"btn",
+			" \n",
+			"28",
+			"register",
+			"SHFT",
+			"RFLAG",
+			";",
+			"tempNum",
+			"tempLoc",
+			"tempNum",
+			"tempSignedResult",
+			"tempResult",
+			"result",
+			"clock",
+			"cLoc",
+			"cloc",
+			"cLoc",
+			"cNum",
+			"SHL",
+			"SHR",
+			"SHL",
+			"I",
+			"i",
+			"I",
+			"instruct",
+			"instruction",
+			"GPO",
+			")",
+			"CPU_test",
+			"CPU",
+			"debouncer_test",
+			"reg_dOut",
+			"reg_gOut",
+			"RFLAG",
+			"rFlag",
+			"rdOut",
+			"rgOut",
+			"GPO",
+			"instruction",
+			"w",
+			"30ms",
+			"enableDigit2",
+			"number (location)",
+			"reset",
+			"DOUT",
+			"dOut",
+			"REG",
+			"dIn",
+			";",
+			"reg",
+			"wire",
+			"reg",
+			"DD0",
+			"&",
+			"xDigit0",
+			"xDigit1",
+			"xDigit2",
+			"dVal",
+			"dValid",
+			"dVal",
+			"out_temp",
+			"negedge",
+			"mid",
+			"clkEnable",
+			"Morse Code",
+			"reg \tenable = \t0;",
+			"clk",
+			"length",
+			"clock",
+			"finish",
+			"clockEnable",
+			"state",
+			"KEY[1]",
+			"LEDR[0]",
+			"LEDR",
+			"KEY[0]",
+			"cntCarry",
+			"cntCarr",
+			"clockEnable",
+			"\t\t\t\t\n",
+			"dot",
+			"\t\n",
+			"reg",
+			"one",
+			"zero",
+			"two",
+			"zero",
+			"two",
+			"one",
+			"zero",
+			"8'd",
+			"6",
+			"7",
+			"6",
+			"\t\n",
+			"d0",
+			"d1"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			"OPR",
+			"opr",
+			"OPR",
+			"five",
+			"four",
+			"three",
+			"two",
+			"",
+			"8",
+			"7",
+			"disp0",
+			"disp1"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": true,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 1,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "AuxMod.v",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 6409,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								829,
+								829
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content"
+							],
+							"syntax": "Packages/Verilog/Verilog.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "CPU.v",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 10350,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								9181,
+								9181
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content"
+							],
+							"syntax": "Packages/Verilog/Verilog.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				}
+			]
+		},
+		{
+			"selected": 1,
+			"sheets":
+			[
+				{
+					"buffer": 2,
+					"file": "ROM.v",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 17130,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								600,
+								600
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content"
+							],
+							"syntax": "Packages/Verilog/Verilog.tmLanguage",
+							"tab_size": 6,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 6277.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "MyComputer.v",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1307,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								495,
+								495
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content"
+							],
+							"syntax": "Packages/Verilog/Verilog.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 109.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				}
+			]
+		},
+		{
+			"selected": 2,
+			"sheets":
+			[
+				{
+					"buffer": 4,
+					"file": "CPU.vh",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 829,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								474,
+								474
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content"
+							],
+							"syntax": "Packages/Verilog/Verilog.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 6,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "CPU_boardTest.v",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1384,
+						"regions":
+						{
+							"bookmarks":
+							{
+								"flags": 144,
+								"icon": "bookmark",
+								"regions":
+								[
+									[
+										609,
+										609
+									],
+									[
+										958,
+										958
+									]
+								],
+								"scope": "bookmarks"
+							}
+						},
+						"selection":
+						[
+							[
+								637,
+								637
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content"
+							],
+							"syntax": "Packages/Verilog/Verilog.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
+					"type": "text"
+				},
+				{
+					"buffer": 6,
+					"file": "testBenches.v",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 4604,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1857,
+								1857
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+									"1":
+									[
+										1907,
+										1908
+									]
+								},
+								"icon":
+								{
+									"1":
+									[
+										"Packages/BracketHighlighter/icons/round_bracket.png",
+										"brackethighlighter.default"
+									]
+								},
+								"open":
+								{
+									"1":
+									[
+										1856,
+										1857
+									]
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content"
+							],
+							"syntax": "Packages/Verilog/Verilog.tmLanguage",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				}
+			]
+		},
+		{
+			"selected": 5,
+			"sheets":
+			[
+				{
+					"buffer": 7,
+					"file": "/Users/kaisoon/Google Drive/Simulators/ModelSim/dsdProject.do",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 92,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								92,
+								0
+							]
+						],
+						"settings":
+						{
+							"auto_name": "vlog -work work {F:/Code/Verilog/DSD Project/testB",
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content"
+							],
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 12,
+					"type": "text"
+				},
+				{
+					"buffer": 8,
+					"file": "/Users/kaisoon/Google Drive/Simulators/ModelSim/debouncer_test.do",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 412,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								92,
+								92
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content"
+							],
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 11,
+					"type": "text"
+				},
+				{
+					"buffer": 9,
+					"file": "/Users/kaisoon/Google Drive/Simulators/ModelSim/dispHex_test.do",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 176,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								92,
+								92
+							]
+						],
+						"settings":
+						{
+							"auto_name": "vlog -reportprogress 300 -work dsdProject {F:/Code",
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content"
+							],
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 10,
+					"type": "text"
+				},
+				{
+					"buffer": 10,
+					"file": "/Users/kaisoon/Google Drive/Simulators/ModelSim/disp2cNum_test.do",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 283,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								92,
+								92
+							]
+						],
+						"settings":
+						{
+							"auto_name": "vlog -reportprogress 300 -work dsdProject {F:/Code",
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content"
+							],
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 9,
+					"type": "text"
+				},
+				{
+					"buffer": 11,
+					"file": "/Users/kaisoon/Google Drive/Simulators/ModelSim/CPU_test.do",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1646,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								93,
+								93
+							]
+						],
+						"settings":
+						{
+							"auto_name": "vlog -reportprogress 300 -work dsdProject {F:/Code",
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content"
+							],
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 8,
+					"type": "text"
+				},
+				{
+					"buffer": 12,
+					"file": "/Users/kaisoon/Google Drive/Simulators/ModelSim/dfe_test.do",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 365,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								93,
+								93
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content"
+							],
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 7,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 35.0
+	},
+	"input":
+	{
+		"height": 35.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				2
+			],
+			[
+				1,
+				0,
+				2,
+				2
+			],
+			[
+				2,
+				0,
+				3,
+				1
+			],
+			[
+				2,
+				1,
+				3,
+				2
+			]
+		],
+		"cols":
+		[
+			0.0,
+			0.333333333333,
+			0.666666666667,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			0.5,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "DSD Project.sublime-project",
+	"replace":
+	{
+		"height": 64.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 500.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"",
+				"~/Google Drive/Code/Verilog/AlteraLab7/AlteraLab7.sublime-project"
+			]
+		],
+		"width": 380.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 1,
+	"settings":
+	{
+		"last_automatic_layout":
+		[
+			[
+				0,
+				0,
+				1,
+				2
+			],
+			[
+				1,
+				0,
+				2,
+				2
+			],
+			[
+				2,
+				0,
+				3,
+				1
+			],
+			[
+				2,
+				1,
+				3,
+				2
+			]
+		]
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": false,
+	"side_bar_width": 216.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+		"max_columns": 3
+	}
+}
